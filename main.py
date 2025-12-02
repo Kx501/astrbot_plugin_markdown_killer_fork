@@ -4,7 +4,7 @@ from astrbot.api.provider import LLMResponse
 from astrbot.api import logger
 import re
 
-@register("astrbot_plugin_markdown_killer", "Alan Backer", "移除LLM输出中的Markdown格式", "0.0.1", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
+@register("astrbot_plugin_markdown_killer", "AlanBacker", "移除LLM输出中的Markdown格式", "0.0.2", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
 class MarkdownKillerPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -30,9 +30,9 @@ class MarkdownKillerPlugin(Star):
             # 使用 logger 提醒
             original_preview = original_text[:50].replace('\n', '\\n')
             cleaned_preview = cleaned_text[:50].replace('\n', '\\n')
-            log_msg = f"[Markdown Killer] 检测到Markdown并移除: {original_preview}... -> {cleaned_preview}..."
+            log_msg = f"\n[Markdown Killer] --------------------------------------------------\n[Markdown Killer] 检测到Markdown并移除:\n[Markdown Killer] 原文: {original_preview}...\n[Markdown Killer] 处理: {cleaned_preview}...\n[Markdown Killer] --------------------------------------------------"
             logger.warning(log_msg)
-            print(log_msg) # 强制输出到控制台以确保可见
+            print(log_msg, flush=True) # 强制输出到控制台以确保可见
 
     def remove_markdown(self, text: str) -> str:
         """
