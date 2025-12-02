@@ -4,13 +4,13 @@ from astrbot.api.provider import LLMResponse
 from astrbot.api import logger
 import re
 
-@register("astrbot_plugin_markdown_killer", "AlanBacker", "移除LLM输出中的Markdown格式", "0.0.2", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
+@register("astrbot_plugin_markdown_killer", "AlanBacker", "移除LLM输出中的Markdown格式", "0.0.3", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
 class MarkdownKillerPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
     
     @filter.on_llm_response()
-    async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse):
+    async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse, *args):
         """
         监听LLM回复，移除Markdown格式
         """
