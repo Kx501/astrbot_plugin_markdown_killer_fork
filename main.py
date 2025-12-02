@@ -19,6 +19,9 @@ class MarkdownKillerPlugin(Star):
 
         original_text = resp.completion_text
         
+        # 调试日志：显示收到的原始文本，以便确认 LLM 是否输出了 Markdown
+        logger.info(f"[Markdown Killer] 收到 LLM 回复 (前50字符): {original_text[:50].replace('\n', '\\n')}...")
+        
         cleaned_text = self.remove_markdown(original_text)
         
         if original_text != cleaned_text:
