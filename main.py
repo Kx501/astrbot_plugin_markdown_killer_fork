@@ -19,32 +19,12 @@ class MarkdownKillerPlugin(Star):
 
         original_text = resp.completion_text
         
-        if self.has_markdown(original_text):
-            cleaned_text = self.remove_markdown(original_text)
+        cleaned_text = self.remove_markdown(original_text)
+        
+        if original_text != cleaned_text:
             resp.completion_text = cleaned_text
             # 使用 logger 提醒
             logger.warning(f"[Markdown Killer] 检测到Markdown并移除: {original_text[:20]}... -> {cleaned_text[:20]}...")
-
-    def has_markdown(self, text: str) -> bool:
-        """
-        检测文本中是否包含Markdown格式
-        """
-        patterns = [
-            r"\*\*[^*]+\*\*", # 粗体 **text**
-            r"__[^_]+__",     # 粗体 __text__
-            r"\*(?!\s)([^*]+)(?<!\s)\*",   # 斜体 *text*
-            r"_(?!\s)([^_]+)(?<!\s)_",     # 斜体 _text_
-            r"`[^`]+`",       # 行内代码
-            r"```[\s\S]*?```", # 代码块
-            r"^#{1,6}\s",     # 标题
-            r"^>\s",          # 引用
-            r"\[.+\]\(.+\)",  # 链接
-        ]
-        
-        for p in patterns:
-            if re.search(p, text, re.MULTILINE):
-                return True
-        return False
 
     def remove_markdown(self, text: str) -> str:
         """
