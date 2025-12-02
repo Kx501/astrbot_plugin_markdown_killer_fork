@@ -4,7 +4,7 @@ from astrbot.api.provider import LLMResponse
 from astrbot.api import logger
 import re
 
-@register("astrbot_plugin_markdown_killer", "AlanBacker", "移除LLM输出中的Markdown格式", "0.0.3", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
+@register("astrbot_plugin_markdown_killer", "AlanBacker", "移除LLM输出中的Markdown格式", "0.0.4", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
 class MarkdownKillerPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -20,8 +20,8 @@ class MarkdownKillerPlugin(Star):
         original_text = resp.completion_text
         
         # 调试日志：显示收到的原始文本，以便确认 LLM 是否输出了 Markdown
-        original_preview_debug = original_text[:50].replace('\n', '\\n')
-        logger.info(f"[Markdown Killer] 收到 LLM 回复 (前50字符): {original_preview_debug}...")
+        # original_preview_debug = original_text[:50].replace('\n', '\\n')
+        # logger.info(f"[Markdown Killer] 收到 LLM 回复 (前50字符): {original_preview_debug}...")
         
         cleaned_text = self.remove_markdown(original_text)
         
