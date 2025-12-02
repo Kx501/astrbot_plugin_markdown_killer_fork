@@ -1,4 +1,4 @@
-# AstrBot Plugin: Markdown Killer
+# AstrBot插件：Markdown杀手
 
 ## 简介
 这是一个 AstrBot 插件，用于监听 LLM 发出的每一条消息，并移除其中的 Markdown 格式。
@@ -17,4 +17,4 @@
 本插件无需额外配置。
 
 ## 作者
-Alan Backer
+AlanBacker
