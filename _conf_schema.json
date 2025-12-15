@@ -1,0 +1,8 @@
+{
+  "remove_empty_lines": {
+    "description": "移除空行",
+    "type": "bool",
+    "default": false,
+    "hint": "如果为true，则会移除文本中的空行"
+  }
+}
