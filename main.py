@@ -4,10 +4,14 @@ from astrbot.api.provider import LLMResponse
 from astrbot.api import logger
 import re
 
-@register("astrbot_plugin_markdown_killer", "AlanBacker", "移除LLM输出中的Markdown格式", "0.0.4", "https://github.com/AlanBacker/astrbot_plugin_markdown_killer")
+@register("astrbot_plugin_markdown_killer_fork", "Kx501", "移除LLM输出中的Markdown格式", "0.0.5", "https://github.com/Kx501/astrbot_plugin_markdown_killer_fork")
 class MarkdownKillerPlugin(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
+        self.config = config or {}
+        
+        # 从配置中读取是否启用移除空行，默认为 False
+        self.remove_empty_lines = self.config.get("remove_empty_lines", False)
     
     @filter.on_llm_response()
     async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse, *args):
@@ -18,10 +22,6 @@ class MarkdownKillerPlugin(Star):
             return
 
         original_text = resp.completion_text
-        
-        # 调试日志：显示收到的原始文本，以便确认 LLM 是否输出了 Markdown
-        # original_preview_debug = original_text[:50].replace('\n', '\\n')
-        # logger.info(f"[Markdown Killer] 收到 LLM 回复 (前50字符): {original_preview_debug}...")
         
         cleaned_text = self.remove_markdown(original_text)
         
@@ -66,5 +66,13 @@ class MarkdownKillerPlugin(Star):
         
         # 移除列表标记 (移除行首的 - 或 *)
         text = re.sub(r"^\s*[-*]\s+(.*)", r"\1", text, flags=re.MULTILINE)
+        
+        # 如果启用了移除空行功能，则移除空行
+        if self.remove_empty_lines:
+            # 使用正则表达式移除空行：
+            # 1. 将连续的空行（只包含空白字符的行）合并为单个换行符
+            # 2. 移除开头和结尾的换行符
+            text = re.sub(r'\n\s*\n+', '\n', text)  # 将连续空行合并为单个换行符
+            text = re.sub(r'^\n+|\n+$', '', text)   # 移除开头和结尾的换行符
         
         return text
