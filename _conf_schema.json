@@ -4,5 +4,11 @@
     "type": "bool",
     "default": false,
     "hint": "如果为true，则会移除文本中的空行"
+  },
+  "first_line_indent": {
+    "description": "首行缩进",
+    "type": "bool",
+    "default": false,
+    "hint": "如果为true，则段落会首行缩进"
   }
 }
