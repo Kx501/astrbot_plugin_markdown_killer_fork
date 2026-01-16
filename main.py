@@ -12,6 +12,10 @@ class MarkdownKillerPlugin(Star):
         
         # 从配置中读取是否启用移除空行，默认为 False
         self.remove_empty_lines = self.config.get("remove_empty_lines", False)
+        
+        # 从配置中读取首行缩进设置，默认为 False
+        # 如果为 True，则使用两个空格作为缩进
+        self.first_line_indent = "  " if self.config.get("first_line_indent", False) else ""
     
     @filter.on_llm_response()
     async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse, *args):
@@ -74,5 +78,19 @@ class MarkdownKillerPlugin(Star):
             # 2. 移除开头和结尾的换行符
             text = re.sub(r'\n\s*\n+', '\n', text)  # 将连续空行合并为单个换行符
             text = re.sub(r'^\n+|\n+$', '', text)   # 移除开头和结尾的换行符
+        
+        # 如果启用了首行缩进功能，为每个段落的首行添加缩进
+        if self.first_line_indent:
+            lines = text.split('\n')
+            result_lines = []
+            
+            for i, line in enumerate(lines):
+                # 如果当前行不为空，且上一行为空或这是第一行，则这是段落首行
+                if line.strip() and (i == 0 or not lines[i-1].strip()):
+                    result_lines.append(self.first_line_indent + line)
+                else:
+                    result_lines.append(line)
+            
+            text = '\n'.join(result_lines)
         
         return text
