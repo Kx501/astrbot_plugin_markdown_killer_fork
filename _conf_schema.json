@@ -10,5 +10,57 @@
     "type": "bool",
     "default": false,
     "hint": "如果为true，则段落会首行缩进"
+  },
+  "segmented_reply": {
+    "description": "分段回复",
+    "type": "object",
+    "default": { "enable": false, "interval": { "min": 0.5, "max": 2.0, "method": "random", "simulate_base": 0.3, "per_char": 0.05 } },
+    "hint": "按段落分成多条消息发送并支持延迟；与移除空行使用相同的段落切分逻辑",
+    "items": {
+      "enable": {
+        "description": "启用",
+        "type": "bool",
+        "default": false,
+        "hint": "开启后按段落分多条发送，每条之间加入延迟"
+      },
+      "interval": {
+        "description": "发送间隔",
+        "type": "object",
+        "hint": "每条消息之间的延迟",
+        "items": {
+          "min": {
+            "description": "下限(秒)",
+            "type": "number",
+            "default": 0.5,
+            "hint": "最小延迟秒数"
+          },
+          "max": {
+            "description": "上限(秒)",
+            "type": "number",
+            "default": 2.0,
+            "hint": "随机间隔时的最大延迟，仅 method 为 random 时有效"
+          },
+          "method": {
+            "description": "方式",
+            "type": "string",
+            "default": "random",
+            "hint": "fixed=固定用下限；random=随机；simulate=按下一段字数仿打字延迟(受下限/上限限制)",
+            "options": ["fixed", "random", "simulate"]
+          },
+          "simulate_base": {
+            "description": "仿真基础延迟(秒)",
+            "type": "number",
+            "default": 0.3,
+            "hint": "仅 method=simulate 时有效：基础秒数 + 字数×每字耗时，再限制在 min~max 之间"
+          },
+          "per_char": {
+            "description": "仿真每字耗时(秒)",
+            "type": "number",
+            "default": 0.05,
+            "hint": "仅 method=simulate 时有效：每个字符增加的延迟"
+          }
+        }
+      }
+    }
   }
 }

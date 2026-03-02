@@ -3,6 +3,8 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.provider import LLMResponse
 from astrbot.api import logger
 import re
+import asyncio
+import random
 
 @register("astrbot_plugin_markdown_killer_fork", "Kx501", "移除LLM输出中的Markdown格式", "0.0.5", "https://github.com/Kx501/astrbot_plugin_markdown_killer_fork")
 class MarkdownKillerPlugin(Star):
@@ -16,6 +18,24 @@ class MarkdownKillerPlugin(Star):
         # 从配置中读取首行缩进设置，默认为 False
         # 如果为 True，则使用两个空格作为缩进
         self.first_line_indent = "  " if self.config.get("first_line_indent", False) else ""
+
+        # 分段回复：按段落分成多条消息发送，并支持延迟（支持嵌套配置与旧版扁平键兼容）
+        sr = self.config.get("segmented_reply")
+        if isinstance(sr, dict):
+            self.segmented_reply = sr.get("enable", False)
+            interval = sr.get("interval") or {}
+            self._seg_interval_min = float(interval.get("min", 0.5))
+            self._seg_interval_max = float(interval.get("max", 2.0))
+            self._seg_interval_method = interval.get("method", "random")
+            self._seg_simulate_base = float(interval.get("simulate_base", 0.3))
+            self._seg_per_char = float(interval.get("per_char", 0.05))
+        else:
+            self.segmented_reply = bool(sr) if sr is not None else False
+            self._seg_interval_min = float(self.config.get("segmented_reply_interval_min", 0.5))
+            self._seg_interval_max = float(self.config.get("segmented_reply_interval_max", 2.0))
+            self._seg_interval_method = self.config.get("segmented_reply_interval_method", "random")
+            self._seg_simulate_base = 0.3
+            self._seg_per_char = 0.05
     
     @filter.on_llm_response()
     async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse, *args):
@@ -36,6 +56,16 @@ class MarkdownKillerPlugin(Star):
             cleaned_preview = cleaned_text[:50].replace('\n', '\\n')
             log_msg = f"\n[Markdown Killer] --------------------------------------------------\n[Markdown Killer] 检测到Markdown并移除:\n[Markdown Killer] 原文: {original_preview}...\n[Markdown Killer] 处理: {cleaned_preview}...\n[Markdown Killer] --------------------------------------------------"
             logger.warning(log_msg)
+
+        # 分段回复：按段落（与移除空行类似的切分逻辑）分成多条消息并带延迟发送
+        if self.segmented_reply and cleaned_text:
+            segments = self._split_into_paragraphs(cleaned_text)
+            if len(segments) > 1:
+                resp.completion_text = segments[0]
+                for seg in segments[1:]:
+                    delay = self._get_segment_delay(seg)
+                    await asyncio.sleep(delay)
+                    await event.send(event.plain_result(seg))
 
     def remove_markdown(self, text: str) -> str:
         """
@@ -94,3 +124,22 @@ class MarkdownKillerPlugin(Star):
             text = '\n'.join(result_lines)
         
         return text
+
+    def _split_into_paragraphs(self, text: str) -> list[str]:
+        """按段落切分，逻辑与移除空行一致：以连续空行（\\n\\s*\\n+）为分隔。"""
+        text = text.strip()
+        if not text:
+            return []
+        parts = re.split(r'\n\s*\n+', text)
+        return [p.strip() for p in parts if p.strip()]
+
+    def _get_segment_delay(self, next_segment: str | None = None) -> float:
+        """根据配置返回本条与下条之间的延迟（秒）。simulate 时按下一段字数仿打字。"""
+        lo = max(0.0, self._seg_interval_min)
+        hi = max(lo, self._seg_interval_max)
+        if self._seg_interval_method == "fixed":
+            return lo
+        if self._seg_interval_method == "simulate" and next_segment is not None:
+            raw = self._seg_simulate_base + len(next_segment) * max(0.0, self._seg_per_char)
+            return max(lo, min(hi, raw))
+        return random.uniform(lo, hi)

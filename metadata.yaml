@@ -1,7 +1,7 @@
 name: astrbot_plugin_markdown_killer_fork
-version: 0.0.5
+display_name: Markdown 杀手
+version: 0.1.0
 author: Kx501
 desc: 移除LLM输出中的Markdown格式
 tags: ["格式化"]
 repo: https://github.com/Kx501/astrbot_plugin_markdown_killer_fork
-display_name: Markdown杀手
