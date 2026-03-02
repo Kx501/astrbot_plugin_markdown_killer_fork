@@ -30,13 +30,13 @@
         "items": {
           "min": {
             "description": "下限(秒)",
-            "type": "number",
+            "type": "float",
             "default": 0.5,
             "hint": "最小延迟秒数"
           },
           "max": {
             "description": "上限(秒)",
-            "type": "number",
+            "type": "float",
             "default": 2.0,
             "hint": "随机间隔时的最大延迟，仅 method 为 random 时有效"
           },
@@ -49,13 +49,13 @@
           },
           "simulate_base": {
             "description": "仿真基础延迟(秒)",
-            "type": "number",
+            "type": "float",
             "default": 0.3,
             "hint": "仅 method=simulate 时有效：基础秒数 + 字数×每字耗时，再限制在 min~max 之间"
           },
           "per_char": {
             "description": "仿真每字耗时(秒)",
-            "type": "number",
+            "type": "float",
             "default": 0.05,
             "hint": "仅 method=simulate 时有效：每个字符增加的延迟"
           }
