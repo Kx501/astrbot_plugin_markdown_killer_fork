@@ -6,7 +6,7 @@ import re
 import asyncio
 import random
 
-@register("astrbot_plugin_markdown_killer_fork", "Kx501", "移除LLM输出中的Markdown格式", "0.0.5", "https://github.com/Kx501/astrbot_plugin_markdown_killer_fork")
+@register("astrbot_plugin_markdown_killer", "Kx501", "移除LLM输出中的Markdown格式", "0.0.5", "https://github.com/Kx501/astrbot_plugin_markdown_killer")
 class MarkdownKillerPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
@@ -58,14 +58,33 @@ class MarkdownKillerPlugin(Star):
             logger.warning(log_msg)
 
         # 分段回复：按段落（与移除空行类似的切分逻辑）分成多条消息并带延迟发送
+        # 第一段留在 resp.completion_text，由框架随主回复发出；若在钩子内先 await event.send
+        # 后续段，会早于第一段到达用户（顺序颠倒）。后续段用后台任务短延迟后再发。
         if self.segmented_reply and cleaned_text:
             segments = self._split_into_paragraphs(cleaned_text)
             if len(segments) > 1:
                 resp.completion_text = segments[0]
-                for seg in segments[1:]:
-                    delay = self._get_segment_delay(seg)
-                    await asyncio.sleep(delay)
-                    await event.send(event.plain_result(seg))
+                tail = segments[1:]
+                asyncio.create_task(
+                    self._send_segmented_tail(event, tail),
+                    name="markdown_killer_segmented_tail",
+                )
+
+    async def _send_segmented_tail(
+        self, event: AstrMessageEvent, tail: list[str]
+    ) -> None:
+        """在主回复（第一段）出站后再发送后续段落，避免顺序颠倒。"""
+        try:
+            # 让出事件循环，使框架先处理 resp.completion_text 并发送第一段
+            await asyncio.sleep(0.12)
+            for seg in tail:
+                delay = self._get_segment_delay(seg)
+                await asyncio.sleep(delay)
+                await event.send(event.plain_result(seg))
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"[Markdown Killer] 分段后续消息发送失败: {e}")
 
     def remove_markdown(self, text: str) -> str:
         """
