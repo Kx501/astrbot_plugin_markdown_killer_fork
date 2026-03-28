@@ -6,7 +6,10 @@ import re
 import asyncio
 import random
 
-@register("astrbot_plugin_markdown_killer", "Kx501", "移除LLM输出中的Markdown格式", "0.0.5", "https://github.com/Kx501/astrbot_plugin_markdown_killer")
+# 与 on_llm_response / after_message_sent 之间传递待发送的后续段落（与 meme_manager 等插件一致用 event extra）
+_MK_SEGMENT_TAIL_EXTRA = "markdown_killer_segment_tail"
+
+@register("astrbot_plugin_markdown_killer", "Kx501", "移除LLM输出中的Markdown格式", "0.1.1", "https://github.com/Kx501/astrbot_plugin_markdown_killer")
 class MarkdownKillerPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
@@ -36,6 +39,9 @@ class MarkdownKillerPlugin(Star):
             self._seg_interval_method = self.config.get("segmented_reply_interval_method", "random")
             self._seg_simulate_base = 0.3
             self._seg_per_char = 0.05
+
+        # 同一会话未完成的「后续段」发送任务，新一轮分段回复时取消，避免与旧 tail 交错
+        self._seg_tail_tasks: dict[str, asyncio.Task] = {}
     
     @filter.on_llm_response()
     async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse, *args):
@@ -57,26 +63,40 @@ class MarkdownKillerPlugin(Star):
             log_msg = f"\n[Markdown Killer] --------------------------------------------------\n[Markdown Killer] 检测到Markdown并移除:\n[Markdown Killer] 原文: {original_preview}...\n[Markdown Killer] 处理: {cleaned_preview}...\n[Markdown Killer] --------------------------------------------------"
             logger.warning(log_msg)
 
-        # 分段回复：按段落（与移除空行类似的切分逻辑）分成多条消息并带延迟发送
-        # 第一段留在 resp.completion_text，由框架随主回复发出；若在钩子内先 await event.send
-        # 后续段，会早于第一段到达用户（顺序颠倒）。后续段用后台任务短延迟后再发。
+        # 分段回复：第一段留在 resp.completion_text；后续段在 after_message_sent 里再发。
+        # 仅用 create_task + sleep 无法保证先于框架出站，管道稍慢时后续段会跑到第一段前面。
         if self.segmented_reply and cleaned_text:
             segments = self._split_into_paragraphs(cleaned_text)
             if len(segments) > 1:
                 resp.completion_text = segments[0]
                 tail = segments[1:]
-                asyncio.create_task(
-                    self._send_segmented_tail(event, tail),
-                    name="markdown_killer_segmented_tail",
-                )
+                umo = event.unified_msg_origin
+                prev = self._seg_tail_tasks.get(umo)
+                if prev is not None and not prev.done():
+                    prev.cancel()
+                event.set_extra(_MK_SEGMENT_TAIL_EXTRA, list(tail))
+
+    @filter.after_message_sent()
+    async def _after_message_sent_segmented(self, event: AstrMessageEvent):
+        tail = event.get_extra(_MK_SEGMENT_TAIL_EXTRA)
+        if not tail:
+            return
+        event.set_extra(_MK_SEGMENT_TAIL_EXTRA, None)
+        umo = event.unified_msg_origin
+        prev = self._seg_tail_tasks.get(umo)
+        if prev is not None and not prev.done():
+            prev.cancel()
+        t = asyncio.create_task(
+            self._send_segmented_tail(event, tail),
+            name="markdown_killer_segmented_tail",
+        )
+        self._seg_tail_tasks[umo] = t
 
     async def _send_segmented_tail(
         self, event: AstrMessageEvent, tail: list[str]
     ) -> None:
-        """在主回复（第一段）出站后再发送后续段落，避免顺序颠倒。"""
+        """在第一段已由框架发出后，按间隔发送剩余段落。"""
         try:
-            # 让出事件循环，使框架先处理 resp.completion_text 并发送第一段
-            await asyncio.sleep(0.12)
             for seg in tail:
                 delay = self._get_segment_delay(seg)
                 await asyncio.sleep(delay)
