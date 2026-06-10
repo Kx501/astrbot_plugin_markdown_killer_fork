@@ -1,3 +1,5 @@
+**此分支暂停更新，将转移到新插件 [MsgProcessor](https://github.com/Kx501/astrbot_plugin_msgprocessor)**
+
 # AstrBot插件：Markdown杀手
 
 ## 简介
